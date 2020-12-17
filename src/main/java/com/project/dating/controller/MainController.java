@@ -1,83 +1,50 @@
 package com.project.dating.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
+import com.project.dating.user.User;
+import com.project.dating.user.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 
-import com.project.dating.form.EtudiantForm;
-import com.project.dating.model.Etudiant;
+import java.util.List;
 
 @Controller
 public class MainController {
 
-    //------------------------------------------------------------------------
-    // 1. Injection des données statiques (car pas de BDD)
-    private static List<Etudiant> etudiants = new ArrayList<Etudiant>();
+    @Autowired
+    private UserRepository userRepo;
 
-    static {
-        // 1ere façon de faire
-        Etudiant etudiant1 = new Etudiant("Alain", "Terrieur");
-        etudiants.add(etudiant1);
-        // 2e façon de faire
-        etudiants.add(new Etudiant("Alex", "Terrieur"));
-    }
-    //--------------------------------------------------------------------------
-
-    // Injectez (inject) via application.properties.
-    @Value("${welcome.message.bienvenue}")
-    private String message;
-
-    @Value("${error.message}")
-    private String errorMessage;
-
-    @RequestMapping(value = { "/", "/index" }, method = RequestMethod.GET)
-    public String index(Model model) {
-
-        model.addAttribute("message", message);
-
+    @GetMapping("")
+    public String viewHomePage() {
         return "index";
     }
 
-    @RequestMapping(value = { "/etudiantList" }, method = RequestMethod.GET)
-    public String etudiantList(Model model) {
+    @GetMapping("/register")
+    public String showRegistrationForm(Model model) {
+        model.addAttribute("user", new User());
 
-        model.addAttribute("etudiants", etudiants);
-
-        return "etudiantList";
+        return "register";
     }
 
-    @RequestMapping(value = { "/addEtudiant" }, method = RequestMethod.GET)
-    public String showAddEtudiantPage(Model model) {
+    @PostMapping("/process_register")
+    public String processRegister(User user) {
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        String encodedPassword = passwordEncoder.encode(user.getPassword());
+        user.setPassword(encodedPassword);
 
-        EtudiantForm etudiantForm = new EtudiantForm();
-        model.addAttribute("etudiantForm", etudiantForm);
+        userRepo.save(user);
 
-        return "addEtudiant";
+        return "register_success";
     }
 
-    @RequestMapping(value = { "/addEtudiant" }, method = RequestMethod.POST)
-    public String saveEtudiant(Model model, //
-                               @ModelAttribute("EtudiantForm") EtudiantForm etudiantForm) {
+    @GetMapping("/users")
+    public String listUsers(Model model) {
+        List<User> listUsers = userRepo.findAll();
+        model.addAttribute("listUsers", listUsers);
 
-        String nom = etudiantForm.getNom();
-        String prenom = etudiantForm.getPrenom();
-
-        if (nom != null && nom.length() > 0 //
-                && prenom != null && prenom.length() > 0) {
-            Etudiant newEtudiant = new Etudiant(nom, prenom);
-            etudiants.add(newEtudiant);
-
-            return "redirect:/etudiantList";
-        }
-
-        model.addAttribute("errorMessage", errorMessage);
-        return "addEtudiant";
+        return "users";
     }
-
 }
